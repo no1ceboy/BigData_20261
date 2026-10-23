@@ -1,0 +1,36 @@
+{
+  "task": "P1",
+  "status": "passed",
+  "action": "config",
+  "configuration": {
+    "dataset_dir": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\d07-1week-mainline",
+    "observations_csv": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\d07-1week-mainline\\processed\\observations.csv.gz",
+    "stations_csv": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\d07-1week-mainline\\processed\\stations.csv",
+    "sample_dir": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\sample",
+    "sample_parquet": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\sample\\traffic_7d.parquet",
+    "sample_events": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\sample\\traffic_events.jsonl",
+    "sample_profile": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\sample\\profile.json",
+    "runs_dir": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs",
+    "station_limit": 100,
+    "event_limit": null,
+    "replay_rate": 5000,
+    "bootstrap_servers": "kafka:9092",
+    "kafka_host_address": "localhost:29092",
+    "topic": "traffic-events",
+    "watermark": "10 minutes",
+    "example_run": {
+      "root": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run",
+      "input": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\input",
+      "valid_events": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\valid_events",
+      "quarantine": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\quarantine",
+      "ingest_checkpoint": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\checkpoints\\ingest",
+      "quarantine_checkpoint": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\checkpoints\\quarantine",
+      "window_5_checkpoint": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\checkpoints\\window_5",
+      "window_15_checkpoint": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\checkpoints\\window_15",
+      "metrics_5min": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\traffic_metrics\\5min",
+      "metrics_15min": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\traffic_metrics\\15min",
+      "traffic_summary": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\traffic_summary",
+      "reports": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs\\example-run\\reports"
+    }
+  }
+}

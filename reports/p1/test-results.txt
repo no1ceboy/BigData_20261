@@ -1,0 +1,49 @@
+test_bad_limits_fail_before_creating_outputs (test_config.RuntimeConfigurationTest.test_bad_limits_fail_before_creating_outputs) ... ok
+test_dotenv_rejects_invalid_names_and_unclosed_quotes (test_config.RuntimeConfigurationTest.test_dotenv_rejects_invalid_names_and_unclosed_quotes) ... ok
+test_dotenv_reports_line_number_for_malformed_input (test_config.RuntimeConfigurationTest.test_dotenv_reports_line_number_for_malformed_input) ... ok
+test_process_overrides_dotenv_and_paths_do_not_depend_on_shell_directory (test_config.RuntimeConfigurationTest.test_process_overrides_dotenv_and_paths_do_not_depend_on_shell_directory) ... ok
+test_source_storage_overlap_is_rejected (test_config.RuntimeConfigurationTest.test_source_storage_overlap_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.015s
+
+OK
+
+test_config_entrypoint_does_not_create_a_run (test_platform.PlatformP1Test.test_config_entrypoint_does_not_create_a_run) ... ok
+test_config_runs_without_site_packages_from_another_directory (test_platform.PlatformP1Test.test_config_runs_without_site_packages_from_another_directory) ... ok
+test_default_check_never_calls_docker_or_creates_output (test_platform.PlatformP1Test.test_default_check_never_calls_docker_or_creates_output) ... ok
+test_missing_source_is_reported_without_regenerating_data (test_platform.PlatformP1Test.test_missing_source_is_reported_without_regenerating_data) ... ok
+test_optional_docker_readiness_fails_clearly_if_docker_is_absent (test_platform.PlatformP1Test.test_optional_docker_readiness_fails_clearly_if_docker_is_absent) ... ok
+test_run_paths_have_separate_checkpoints_and_prevent_path_traversal (test_platform.PlatformP1Test.test_run_paths_have_separate_checkpoints_and_prevent_path_traversal) ... ok
+test_storage_initialization_is_repeatable_and_preserves_existing_source_and_sample (test_platform.PlatformP1Test.test_storage_initialization_is_repeatable_and_preserves_existing_source_and_sample) ... ok
+test_unsafe_storage_is_rejected_before_creating_directories (test_platform.PlatformP1Test.test_unsafe_storage_is_rejected_before_creating_directories) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.151s
+
+OK
+
+Isolated P1 source only (no P2/P3 modules, no site-packages):
+test_bad_limits_fail_before_creating_outputs (test_config.RuntimeConfigurationTest.test_bad_limits_fail_before_creating_outputs) ... ok
+test_dotenv_rejects_invalid_names_and_unclosed_quotes (test_config.RuntimeConfigurationTest.test_dotenv_rejects_invalid_names_and_unclosed_quotes) ... ok
+test_dotenv_reports_line_number_for_malformed_input (test_config.RuntimeConfigurationTest.test_dotenv_reports_line_number_for_malformed_input) ... ok
+test_process_overrides_dotenv_and_paths_do_not_depend_on_shell_directory (test_config.RuntimeConfigurationTest.test_process_overrides_dotenv_and_paths_do_not_depend_on_shell_directory) ... ok
+test_source_storage_overlap_is_rejected (test_config.RuntimeConfigurationTest.test_source_storage_overlap_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.012s
+
+OK
+test_config_entrypoint_does_not_create_a_run (test_platform.PlatformP1Test.test_config_entrypoint_does_not_create_a_run) ... ok
+test_config_runs_without_site_packages_from_another_directory (test_platform.PlatformP1Test.test_config_runs_without_site_packages_from_another_directory) ... ok
+test_default_check_never_calls_docker_or_creates_output (test_platform.PlatformP1Test.test_default_check_never_calls_docker_or_creates_output) ... ok
+test_missing_source_is_reported_without_regenerating_data (test_platform.PlatformP1Test.test_missing_source_is_reported_without_regenerating_data) ... ok
+test_optional_docker_readiness_fails_clearly_if_docker_is_absent (test_platform.PlatformP1Test.test_optional_docker_readiness_fails_clearly_if_docker_is_absent) ... ok
+test_run_paths_have_separate_checkpoints_and_prevent_path_traversal (test_platform.PlatformP1Test.test_run_paths_have_separate_checkpoints_and_prevent_path_traversal) ... ok
+test_storage_initialization_is_repeatable_and_preserves_existing_source_and_sample (test_platform.PlatformP1Test.test_storage_initialization_is_repeatable_and_preserves_existing_source_and_sample) ... ok
+test_unsafe_storage_is_rejected_before_creating_directories (test_platform.PlatformP1Test.test_unsafe_storage_is_rejected_before_creating_directories) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.127s
+
+OK

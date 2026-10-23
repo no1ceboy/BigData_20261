@@ -1,0 +1,16 @@
+{
+  "task": "P1",
+  "status": "passed",
+  "action": "check",
+  "checks": {
+    "python_3_11": true,
+    "source_observations_present": true,
+    "source_stations_present": true,
+    "storage_paths_valid": true
+  },
+  "runtime_services_checked": false,
+  "storage": {
+    "sample_dir": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\sample",
+    "runs_dir": "C:\\HUST\\Big Data Storage and Processing\\Project\\data\\runs"
+  }
+}

@@ -1,5 +1,23 @@
 # BigData_20261 - Caltrans PeMS District 7 Traffic Dataset
 
+## FreewayPulse — P1 của Nguyễn Tất Thanh
+
+Phần Data của Sơn đã hoàn thành theo xác nhận của nhóm. Phạm vi bàn giao hiện tại là **P1: chuẩn hóa runtime, biến môi trường, đường dẫn lưu trữ và quy ước chạy chung**. [Tài liệu P1 và danh sách file cần commit](docs/platform-p1.md).
+
+Các lệnh P1 chỉ cần Python 3.11 và thư viện chuẩn, chạy được khi chưa có Docker/Kafka/Spark. Trên Windows, wrapper ưu tiên `.venv/Scripts/python.exe` nếu có; Linux/macOS ưu tiên `.venv/bin/python`. Có thể tạo venv bằng `uv venv --python 3.11 .venv`.
+
+```powershell
+.\scripts\platform.cmd config
+.\scripts\platform.cmd check
+.\scripts\platform.cmd init-storage
+```
+
+Linux/macOS dùng `bash scripts/platform.sh` với cùng action. `config` hiển thị cấu hình và layout; `check` kiểm tra runtime Python, sự hiện diện của nguồn và đường dẫn; `init-storage` tạo thư mục sample/run nếu chưa có, giữ nguyên dữ liệu hiện có. `.env.example` chứa giá trị dùng chung; sao chép thành `.env` khi cần tùy chỉnh.
+
+Dockerfile/Compose chuẩn hóa môi trường container để nhóm dùng sau. Chỉ cần Docker engine khi build/chạy container; Kafka/Spark thật được dùng khi tích hợp P2 và demo P3. [Bằng chứng kiểm tra P1](reports/p1/validation.json).
+
+---
+
 Dữ liệu giao thông 1 tuần thu thập từ hệ thống **Caltrans PeMS** (District 7 - Los Angeles & Ventura, California) phục vụ cho môn học Big Data.
 
 ---

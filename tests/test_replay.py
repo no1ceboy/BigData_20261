@@ -34,6 +34,8 @@ def test_load_keeps_contract(input_path):
     assert "station_id" in df.columns
     assert "event_time" in df.columns
     assert "event_id" in df.columns
+    assert {"speed", "flow", "occupancy"}.issubset(df.columns)
+    assert not {"speed_mph", "flow_veh_5min", "occupancy_fraction"}.intersection(df.columns)
 
     # 2. Không chứa null ở khóa chính
     assert df["event_id"].isnull().sum() == 0

@@ -36,6 +36,7 @@ Tài liệu kỹ thuật đặc tả kiến trúc luồng xử lý dữ liệu t
 - **Phân giải Schema**:
   - Trích xuất trường nhị phân `value` sang chuỗi JSON UTF-8.
   - Sử dụng `from_json` với schema `RAW_TRAFFIC_EVENT_SCHEMA` để ánh xạ thành các cột định kiểu tường minh.
+  - Kafka contract dùng tên chuẩn `speed`, `flow`, `occupancy`; producer ánh xạ các tên PeMS tương ứng trước khi gửi.
   - Chuyển đổi chuỗi ISO 8601 `event_time` sang `TimestampType` với múi giờ Los Angeles (`America/Los_Angeles`).
 
 ### 2.2 S2: Kiểm tra Hợp lệ, Cách ly và Khử Trùng lặp (`validate_records`, `apply_watermark_and_dedup`)
@@ -43,9 +44,9 @@ Tài liệu kỹ thuật đặc tả kiến trúc luồng xử lý dữ liệu t
   - `station_id`: Phải khác NULL và > 0.
   - `event_time`: Phải khác NULL.
   - `event_id`: Phải khác NULL và không rỗng.
-  - `speed_mph`: Cho phép NULL (giá trị thiếu) hoặc nằm trong khoảng $[0.0, 120.0]$ mph.
-  - `flow_veh_5min`: Cho phép NULL hoặc $\ge 0$.
-  - `occupancy_fraction`: Cho phép NULL hoặc nằm trong khoảng $[0.0, 1.0]$.
+  - `speed`: Cho phép NULL (giá trị thiếu) hoặc nằm trong khoảng $[0.0, 120.0]$ mph.
+  - `flow`: Cho phép NULL hoặc $\ge 0$ xe/5 phút.
+  - `occupancy`: Cho phép NULL hoặc nằm trong khoảng $[0.0, 1.0]$.
 - **Xử lý Dữ liệu Lỗi (Quarantine)**: Các bản ghi vi phạm quy tắc trên được gắn nhãn `quarantine_reason` và tách riêng sang thư mục cách ly `quarantine/`.
 - **Event-time Watermarking**: Áp dụng `.withWatermark("event_time", settings.watermark)` (mặc định 10 phút) nhằm cho phép Spark dọn dẹp state bộ nhớ và chấp nhận dữ liệu đến muộn trong ngưỡng cho phép.
 - **Khử Trùng lặp (Deduplication)**: Áp dụng `.dropDuplicates(["event_id", "event_time"])` giúp loại bỏ hoàn toàn các bản tin phát lặp từ network retransmission.
@@ -55,9 +56,9 @@ Tài liệu kỹ thuật đặc tả kiến trúc luồng xử lý dữ liệu t
   1. **Cửa sổ 5 phút (Tumbling)**: `window(event_time, "5 minutes")`.
   2. **Cửa sổ 15 phút (Sliding)**: `window(event_time, "15 minutes", "5 minutes")` (bước trượt 5 phút cung cấp độ mịn cao cho analytics).
 - **Công thức chỉ số**:
-  - `avg_speed`: $\text{round}(\text{avg}(\text{speed\_mph}), 2)$
-  - `total_flow`: $\sum(\text{flow\_veh\_5min})$ (thay NULL bằng 0)
-  - `avg_occupancy`: $\text{round}(\text{avg}(\text{occupancy\_fraction}), 4)$
+  - `avg_speed`: $\text{round}(\text{avg}(\text{speed}), 2)$ mph
+  - `total_flow`: $\sum(\text{flow})$ xe trong các mẫu của cửa sổ (thay NULL bằng 0)
+  - `avg_occupancy`: $\text{round}(\text{avg}(\text{occupancy}), 4)$
   - `valid_count`: Số lượng quan trắc hợp lệ được tính trong cửa sổ.
 
 ### 2.4 S4: Lưu trữ Parquet Sink và Streaming Checkpoint

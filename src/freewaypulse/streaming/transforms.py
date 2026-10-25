@@ -58,9 +58,9 @@ def validate_records(df: DataFrame) -> Tuple[DataFrame, DataFrame]:
     - station_id > 0 AND NOT NULL
     - event_time NOT NULL
     - event_id NOT NULL AND LENGTH > 0
-    - speed_mph: NULL OR (0.0 <= speed_mph <= 120.0)
-    - flow_veh_5min: NULL OR flow_veh_5min >= 0
-    - occupancy_fraction: NULL OR (0.0 <= occupancy_fraction <= 1.0)
+    - speed: NULL OR (0.0 <= speed <= 120.0)
+    - flow: NULL OR flow >= 0
+    - occupancy: NULL OR (0.0 <= occupancy <= 1.0)
 
     Returns:
         (valid_df, quarantine_df)
@@ -69,10 +69,10 @@ def validate_records(df: DataFrame) -> Tuple[DataFrame, DataFrame]:
     cond_time = col("event_time").isNotNull()
     cond_id = col("event_id").isNotNull() & (col("event_id") != "")
 
-    cond_speed = col("speed_mph").isNull() | ((col("speed_mph") >= 0.0) & (col("speed_mph") <= 120.0))
-    cond_flow = col("flow_veh_5min").isNull() | (col("flow_veh_5min") >= 0)
-    cond_occ = col("occupancy_fraction").isNull() | (
-        (col("occupancy_fraction") >= 0.0) & (col("occupancy_fraction") <= 1.0)
+    cond_speed = col("speed").isNull() | ((col("speed") >= 0.0) & (col("speed") <= 120.0))
+    cond_flow = col("flow").isNull() | (col("flow") >= 0)
+    cond_occ = col("occupancy").isNull() | (
+        (col("occupancy") >= 0.0) & (col("occupancy") <= 1.0)
     )
 
     is_valid = cond_station & cond_time & cond_id & cond_speed & cond_flow & cond_occ
@@ -115,9 +115,9 @@ def compute_traffic_windows(
     S3: Compute windowed aggregations by station_id and event_time window.
     Supports tumbling windows (slide_duration=None) and sliding windows.
     Metrics computed:
-    - avg_speed: round(avg(speed_mph), 2)
-    - total_flow: sum(flow_veh_5min)
-    - avg_occupancy: round(avg(occupancy_fraction), 4)
+    - avg_speed: round(avg(speed), 2)
+    - total_flow: sum(flow)
+    - avg_occupancy: round(avg(occupancy), 4)
     - valid_count: count(1)
     """
     if slide_duration:
@@ -126,9 +126,9 @@ def compute_traffic_windows(
         win_col = window(col("event_time"), window_duration)
 
     agg_df = df.groupBy(col("station_id"), win_col.alias("win")).agg(
-        round(avg(col("speed_mph")), 2).alias("avg_speed"),
-        coalesce(sum(col("flow_veh_5min")), lit(0)).cast("long").alias("total_flow"),
-        round(avg(col("occupancy_fraction")), 4).alias("avg_occupancy"),
+        round(avg(col("speed")), 2).alias("avg_speed"),
+        coalesce(sum(col("flow")), lit(0)).cast("long").alias("total_flow"),
+        round(avg(col("occupancy")), 4).alias("avg_occupancy"),
         count(lit(1)).cast("long").alias("valid_count"),
     )
 

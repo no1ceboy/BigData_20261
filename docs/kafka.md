@@ -99,9 +99,9 @@ Mỗi bản tin (message) đẩy vào topic `traffic-events` tuân thủ định
   "event_id": "760063_20261014T000000",
   "event_time": "2026-10-14T00:00:00-07:00",
   "station_id": 760063,
-  "speed_mph": 65.4,
-  "flow_veh_5min": 182,
-  "occupancy_fraction": 0.0312,
+  "flow": 182,
+  "speed": 65.4,
+  "occupancy": 0.0312,
   "observed_percent": 100.0,
   "latitude": 34.0522,
   "longitude": -118.2437,
@@ -111,6 +111,8 @@ Mỗi bản tin (message) đẩy vào topic `traffic-events` tuân thủ định
 }
 ```
 
+Producer chuẩn hóa tên cột PeMS trước khi gửi: `timestamp` → `event_time`, `flow_veh_5min` → `flow`, `speed_mph` → `speed`, và `occupancy_fraction` → `occupancy`. Đơn vị được giữ nguyên: flow là xe/5 phút, speed là mph, occupancy là tỷ lệ từ 0 đến 1. Các cột metadata như latitude, longitude và lane_type vẫn được giữ lại trong JSON.
+
 ### 3.2 Quy chuẩn Kiểu dữ liệu & Giá trị Thiếu
 
 | Khóa (Field) | Kiểu dữ liệu | Bắt buộc | Mô tả & Ràng buộc Kỹ thuật |
@@ -118,10 +120,12 @@ Mỗi bản tin (message) đẩy vào topic `traffic-events` tuân thủ định
 | `event_id` | `String` | Có | Định danh bản tin duy nhất theo định dạng `{station_id}_{YYYYMMDDTHHmmss}`. Sử dụng làm khóa khử trùng lặp (Deduplication Key). |
 | `event_time` | `String` (ISO 8601) | Có | Thời gian quan trắc thực tế, bảo toàn offset địa phương California (`-07:00`). Không quy đổi sang UTC tại tầng producer. |
 | `station_id` | `Integer` | Có | Mã định danh trạm cảm biến thu thập số liệu. |
-| `speed_mph` | `Float` / `null` | Không | Vận tốc trung bình (mph). Giá trị thiếu hoặc không xác định xuất hiện dưới dạng `null` (không để chuỗi `"NaN"`). |
-| `flow_veh_5min` | `Integer` / `null` | Không | Tổng lưu lượng phương tiện quan sát trong cửa sổ 5 phút. |
-| `occupancy_fraction` | `Float` / `null` | Không | Tỷ lệ chiếm dụng mặt đường ($0.0 \rightarrow 1.0$). |
+| `flow` | `Integer` / `null` | Không | Tổng lưu lượng phương tiện quan sát trong 5 phút (xe/5 phút). |
+| `speed` | `Float` / `null` | Không | Vận tốc trung bình (mph). Giá trị thiếu hoặc không xác định xuất hiện dưới dạng `null` (không để chuỗi `"NaN"`). |
+| `occupancy` | `Float` / `null` | Không | Tỷ lệ chiếm dụng mặt đường ($0.0 \rightarrow 1.0$). |
 | `observed_percent` | `Float` / `null` | Không | Tỷ lệ % dữ liệu đo thực tế ($0 \rightarrow 100$). |
+| `freeway` | `Integer` | Có | Mã tuyến cao tốc. |
+| `direction` | `String` | Có | Hướng lưu thông (`N`, `S`, `E`, `W`). |
 
 ---
 

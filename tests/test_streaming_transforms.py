@@ -66,9 +66,9 @@ def test_schema_contracts():
         "event_id",
         "event_time",
         "station_id",
-        "speed_mph",
-        "flow_veh_5min",
-        "occupancy_fraction",
+        "speed",
+        "flow",
+        "occupancy",
         "observed_percent",
     }
     assert required_raw.issubset(raw_names), f"Missing fields in raw schema: {required_raw - raw_names}"

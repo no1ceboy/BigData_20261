@@ -28,6 +28,8 @@ Linux/macOS: `bash scripts/demo.sh run --run-id checkpoint-01`. Lệnh dùng pro
 
 Output và log mới được tạo dưới `data/runs/checkpoint-01/`; mỗi demo mới dùng ID mới. [Runbook đầy đủ](docs/checkpoint-runbook.md) mô tả thiết lập, số liệu kỳ vọng, kiểm chứng, dừng và phục hồi. CI Linux trong `.github/workflows/checkpoint.yml` chạy cùng lệnh trên clone sạch và lưu bằng chứng. Không cần tạo lại thư mục `data/sample` cho đường chạy này.
 
+**Đã nghiệm thu P2/P3:** [CI 40213958909](https://github.com/no1ceboy/BigData_20261/actions/runs/40213958909) chạy đủ 201.600 event, 268.800 summary, đối chiếu nguồn/Parquet và restart thành công; **66 test pass**. [Báo cáo bàn giao](reports/checkpoint/README.md) ghi đúng source commit, môi trường và các giới hạn. A3 vẫn do trưởng nhóm xác nhận.
+
 ---
 
 Dữ liệu giao thông 1 tuần thu thập từ hệ thống **Caltrans PeMS** (District 7 - Los Angeles & Ventura, California) phục vụ cho môn học Big Data.

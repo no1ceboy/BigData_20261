@@ -1,0 +1,54 @@
+{
+  "status": "passed",
+  "source": "kafka",
+  "finite_demo": true,
+  "topic": "traffic-events-checkpoint-ci",
+  "watermark": "10 minutes",
+  "window_15_slide": null,
+  "counts": {
+    "aggregation_mode": "finite_complete_streaming_snapshots",
+    "valid_events": 201600,
+    "quarantine": 0,
+    "metrics_5min": 201600,
+    "metrics_15min": 67200,
+    "traffic_summary": 268800,
+    "traffic_states": {
+      "MODERATE": 18277,
+      "FREE": 238080,
+      "CONGESTED": 10736,
+      "SEVERE": 1707
+    }
+  },
+  "query_evidence": {
+    "query_ingest": {
+      "query_id": "f86161f2-f45d-4809-a253-97dccc331d21",
+      "same_id_after_restart": true,
+      "input_events_first_run": 201600,
+      "input_events_restart": 0,
+      "progress_batches_first_run": 42,
+      "rows_dropped_by_watermark": 0
+    },
+    "query_quarantine": {
+      "query_id": "44b461a1-26ae-4202-ba2f-de08cec56e57",
+      "same_id_after_restart": true,
+      "input_events_first_run": 201600,
+      "input_events_restart": 0,
+      "progress_batches_first_run": 41,
+      "rows_dropped_by_watermark": 0
+    },
+    "metrics_5min": {
+      "query_id": "25b1d635-3115-4e87-a60e-0080750be9f8",
+      "same_id_after_restart": true,
+      "input_events_first_run": 201600,
+      "input_events_restart": 0,
+      "output_mode": "complete"
+    },
+    "metrics_15min": {
+      "query_id": "03fa6e82-1eb4-4401-836e-a2e9d700db8f",
+      "same_id_after_restart": true,
+      "input_events_first_run": 201600,
+      "input_events_restart": 0,
+      "output_mode": "complete"
+    }
+  }
+}

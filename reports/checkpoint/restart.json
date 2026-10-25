@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "same_checkpoints": true,
+  "producer_replayed": false,
+  "input_events": 201600,
+  "outputs_unchanged": true
+}

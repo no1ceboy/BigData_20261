@@ -4,9 +4,20 @@ Tài liệu này hướng dẫn chạy các module đã được nhóm bàn giao
 
 ## 1. Phụ thuộc và trạng thái nghiệm thu
 
-Checklist hiện đánh dấu D1–D4, K1–K3, S1–S4, A1–A2 và P1 là Done; P2, P3 và acceptance A3 chưa bắt đầu. Vì vậy, P2/P3 đã có đầu vào từ đồng đội để triển khai. Điểm còn cần là một môi trường thực thi Kafka–Spark và bằng chứng chạy toàn chuỗi. A3 thuộc trưởng nhóm; tài liệu và kết quả P2/P3 không tự thay cho sign-off A3.
+Đầu vào từ đồng đội đã sẵn sàng: checklist đánh dấu D1–D4, K1–K3, S1–S4 và A1–A2 là Done. P2/P3 không còn bị chặn bởi task của thành viên khác. Trước lần triển khai này, checklist còn ghi P2/P3 chưa bắt đầu; trạng thái bàn giao sau khi chạy nghiệm thu như sau:
 
-Không sửa trạng thái trong Excel chỉ vì đã viết xong code. Chỉ đánh dấu P2/P3 được nghiệm thu khi lệnh demo và kiểm tra restart bên dưới thành công. Kết quả từng lần chạy nằm trong `data/runs/<run-id>/reports/`; workflow [checkpoint.yml](../.github/workflows/checkpoint.yml) thực hiện cùng quy trình trên Linux và lưu artifact `checkpoint-evidence`. Một workflow đã được khai báo chưa phải bằng chứng workflow đã chạy thành công.
+| Task | Trạng thái bàn giao | Bằng chứng/phạm vi |
+|---|---|---|
+| P1 — Cấu hình/runtime/storage | Done | Cấu hình chung và kiểm tra đã bàn giao |
+| P2 — Tích hợp pipeline | Done | Kafka → Spark → analytics → Parquet đủ 100 trạm × 7 ngày, verifier pass |
+| P3 — Demo/runbook | Done | Một lệnh từ checkout sạch trên Linux CI, restart cùng checkpoint giữ nguyên output |
+| A3 — Acceptance của trưởng nhóm | Not Started | Tường Minh đánh giá và sign-off; Thanh không tự nghiệm thu thay |
+
+**Bằng chứng thực chạy:** [GitHub Actions run 40213958909](https://github.com/no1ceboy/BigData_20261/actions/runs/40213958909) đã **SUCCESS**, kết thúc ngày **26/10/2026 theo Asia/Saigon**. Run kiểm tra chính xác source commit [`3a3beabcdbc9742d0ba3057708e10045554bc6db`](https://github.com/no1ceboy/BigData_20261/commit/3a3beabcdbc9742d0ba3057708e10045554bc6db), không phải hash của các commit cập nhật tài liệu sau đó. Bộ test trong Linux worker đạt **66 passed trong 21,33 giây**.
+
+Producer xác nhận **201.600 sent, 0 failed**, trong **40,321 giây**, đạt **4.999,89 event/giây**. Spark lưu 201.600 valid events, quarantine 0; verifier độc lập đối chiếu nguồn và Parquet thành công. Chạy lại Spark với cùng checkpoint, không phát lại producer, giữ nguyên kết quả. Báo cáo tổng hợp được lưu tại [reports/checkpoint/validation.json](../reports/checkpoint/validation.json).
+
+Workflow [checkpoint.yml](../.github/workflows/checkpoint.yml) lưu báo cáo thành artifact `checkpoint-evidence`; chi tiết mỗi run nằm trong `data/runs/<run-id>/reports/`. Máy Windows local vẫn thiếu Docker engine; bằng chứng Kafka–Spark trên là từ Linux CI chạy thật. A3 thuộc trưởng nhóm; kết quả P2/P3 không tự thay cho sign-off A3.
 
 ## 2. Chuẩn bị trên một bản checkout mới
 
@@ -112,7 +123,7 @@ Kỳ vọng với bộ nguồn hiện tại, đủ 100 trạm × 7 ngày, không
 | Traffic summary | 268.800 |
 | Producer delivery lỗi | 0 |
 
-Đây là kỳ vọng để đối chiếu, không phải tuyên bố một run đã pass. Khi thay số trạm, cap event, nguồn hoặc quy tắc validation, cần dùng verifier để tính và đối chiếu lại; không ép số lượng bằng cách bỏ qua event lỗi.
+Linux CI run `40213958909` đã xác nhận đầy đủ các số lượng trên: metric 5 phút **201.600**, metric 15 phút **67.200**, summary **268.800**; verifier và kiểm tra restart đều pass. Khi thay số trạm, cap event, nguồn hoặc quy tắc validation, cần dùng verifier để tính và đối chiếu lại; không ép số lượng bằng cách bỏ qua event lỗi.
 
 Verifier cần xác nhận giá trị metric và nhãn, ngoài số lượng file/dòng. `avg_speed` dùng mph, `total_flow` là tổng xe/5 phút của những event trong cửa sổ và `avg_occupancy` giữ tỷ lệ 0–1. Summary giữ `window_minutes` để phân biệt hai bộ cửa sổ.
 
@@ -164,4 +175,4 @@ Dừng Kafka sau khi demo:
 
 Các phần chính của Thanh là `src/freewaypulse/demo.py`, `src/freewaypulse/verification.py`, `scripts/demo.*`, workflow checkpoint, tài liệu này và các sửa tương thích tại producer/Spark. Module nghiệp vụ tiếp tục thuộc owner ban đầu.
 
-Một bàn giao P2/P3 có đủ bằng chứng gồm source commit, lệnh chạy/tham số, `runtime.json`, `producer.json`, báo cáo Spark, `verification.json`, `restart.json` và kết quả test. Ghi rõ môi trường nào đã chạy. Nếu máy local thiếu Docker, phải nêu giới hạn đó và dùng kết quả Linux CI thực tế khi có; không đổi kết quả test offline thành kết luận Kafka–Spark end-to-end đã pass.
+P2/P3 đã có đủ bằng chứng trong [CI thành công](https://github.com/no1ceboy/BigData_20261/actions/runs/40213958909) và [báo cáo bàn giao](../reports/checkpoint/validation.json): source commit, tham số, `runtime.json`, `producer.json`, báo cáo Spark, `verification.json`, `restart.json` và 66 test pass. Có thể review và bàn giao cho trưởng nhóm thực hiện A3. Giữ nguyên giới hạn chế độ finite replay và snapshot không atomic đã nêu ở mục 4 khi trình bày kết quả.

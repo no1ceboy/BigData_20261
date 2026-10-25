@@ -67,9 +67,20 @@ def test_real_pems_sample_pipeline(spark, tmp_path):
     df_raw_pandas = pd.read_csv(obs_file, nrows=1000, compression="gzip")
     assert len(df_raw_pandas) == 1000
 
-    # Ensure event_id and event_time exist according to contract
-    if "event_time" not in df_raw_pandas.columns and "timestamp" in df_raw_pandas.columns:
-        df_raw_pandas["event_time"] = df_raw_pandas["timestamp"]
+    # Match the producer contract: source PeMS names become canonical event names.
+    aliases = {
+        "timestamp": "event_time",
+        "speed_mph": "speed",
+        "flow_veh_5min": "flow",
+        "occupancy_fraction": "occupancy",
+    }
+    for source, canonical in aliases.items():
+        if source in df_raw_pandas.columns and canonical in df_raw_pandas.columns:
+            raise ValueError(f"Sample contains both {source} and {canonical}")
+        if source in df_raw_pandas.columns:
+            df_raw_pandas = df_raw_pandas.rename(columns={source: canonical})
+
+    # Ensure event_id exists according to contract.
     if "event_id" not in df_raw_pandas.columns:
         ts_clean = pd.to_datetime(df_raw_pandas["event_time"]).dt.strftime("%Y%m%dT%H%M%S")
         df_raw_pandas["event_id"] = df_raw_pandas["station_id"].astype(str) + "_" + ts_clean

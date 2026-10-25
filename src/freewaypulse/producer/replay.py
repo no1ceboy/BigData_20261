@@ -76,7 +76,7 @@ def find_input_file(configured_path: str) -> Path:
 def load_dataset(file_path: Path, limit: int = 0) -> pd.DataFrame:
     """
     Đọc dữ liệu observations.csv.gz của Sơn và chuẩn hóa contract:
-    - timestamp -> event_time (giữ nguyên chuỗi ISO chuẩn)
+    - ánh xạ timestamp/speed_mph/flow_veh_5min/occupancy_fraction sang tên contract
     - sinh event_id ổn định {station_id}_{timestamp} phục vụ Spark dedup
     - sắp xếp theo event_time, station_id để replay mang tính deterministic
     """
@@ -85,9 +85,28 @@ def load_dataset(file_path: Path, limit: int = 0) -> pd.DataFrame:
     else:
         df = pd.read_csv(file_path, compression="gzip" if str(file_path).endswith(".gz") else None)
 
-    # Đổi tên timestamp -> event_time theo contract của Spark
-    if "event_time" not in df.columns and "timestamp" in df.columns:
-        df["event_time"] = df["timestamp"]
+    # PeMS column names become the shared event contract names at the producer boundary.
+    aliases = {
+        "timestamp": "event_time",
+        "flow_veh_5min": "flow",
+        "speed_mph": "speed",
+        "occupancy_fraction": "occupancy",
+    }
+    for source, canonical in aliases.items():
+        if source in df.columns and canonical in df.columns:
+            raise ValueError(
+                f"Input contains both source and canonical columns: {source}, {canonical}"
+            )
+        if source in df.columns:
+            df = df.rename(columns={source: canonical})
+
+    required = {
+        "event_time", "station_id", "flow", "speed", "occupancy",
+        "observed_percent", "freeway", "direction",
+    }
+    missing = sorted(required.difference(df.columns))
+    if missing:
+        raise ValueError(f"Input is missing canonical traffic-event columns: {', '.join(missing)}")
 
     # Đảm bảo event_id tồn tại
     if "event_id" not in df.columns:

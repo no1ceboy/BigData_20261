@@ -32,6 +32,8 @@ if sys.platform == "win32":
 from pyspark.sql import DataFrame, SparkSession
 
 from freewaypulse.config import Settings
+from freewaypulse.analytics.spark import add_traffic_state
+from freewaypulse.streaming.schema import PARSED_TRAFFIC_EVENT_SCHEMA
 from freewaypulse.streaming.transforms import (
     apply_watermark_and_dedup,
     compute_traffic_windows,
@@ -42,7 +44,7 @@ from freewaypulse.streaming.transforms import (
 
 def create_spark_session(
     app_name: str = "freewaypulse-spark-streaming",
-    master: str = "local[*]",
+    master: str = "local[2]",
     include_kafka_package: bool = True,
     extra_configs: Optional[Dict[str, str]] = None,
 ) -> SparkSession:
@@ -199,4 +201,137 @@ def process_offline_batch(
         "clean": clean_df,
         "metrics_5min": metrics_5min,
         "metrics_15min": metrics_15min,
+    }
+
+
+def build_finite_demo_pipeline(
+    spark: SparkSession,
+    settings: Settings,
+    run_id: str,
+    source_df: Optional[DataFrame] = None,
+    max_offsets_per_trigger: int = 5000,
+) -> Dict[str, Any]:
+    """Drain a finite replay into checkpointed, validated event Parquet.
+
+    The Kafka producer must finish before this availableNow query starts. A
+    watermark cannot close the final historical windows without future events;
+    ``finalize_finite_demo`` therefore uses complete-mode streaming window
+    snapshots after ingestion finishes. Continuous S1-S4 is unchanged.
+    ``source_df`` permits the same ingestion to be exercised with a file stream.
+    """
+    paths = settings.for_run(run_id).as_dict()
+    if max_offsets_per_trigger <= 0:
+        raise ValueError("max_offsets_per_trigger must be positive")
+    if source_df is None:
+        source_df = (
+            spark.readStream.format("kafka")
+            .option("kafka.bootstrap.servers", settings.bootstrap_servers)
+            .option("subscribe", settings.topic)
+            .option("startingOffsets", "earliest")
+            .option("failOnDataLoss", "true")
+            .option("maxOffsetsPerTrigger", max_offsets_per_trigger)
+            .load()
+        )
+    if not source_df.isStreaming:
+        raise ValueError("Finite demo ingestion requires a streaming source")
+
+    valid, quarantine = validate_records(parse_kafka_stream(source_df))
+    clean = apply_watermark_and_dedup(valid, watermark=settings.watermark)
+    queries: Dict[str, Any] = {"paths": paths}
+    try:
+        for name, frame, destination, checkpoint in (
+            ("ingest", clean, "valid_events", "ingest_checkpoint"),
+            ("quarantine", quarantine, "quarantine", "quarantine_checkpoint"),
+        ):
+            queries[f"query_{name}"] = (
+                frame.writeStream.format("parquet")
+                .outputMode("append")
+                .option("path", paths[destination])
+                .option("checkpointLocation", paths[checkpoint])
+                .trigger(availableNow=True)
+                .start()
+            )
+    except Exception:
+        for name, query in queries.items():
+            if name.startswith("query_") and query.isActive:
+                query.stop()
+        raise
+    return queries
+
+
+def finalize_finite_demo(
+    spark: SparkSession,
+    paths: Dict[str, str],
+    window_15_slide: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Materialize full-window metrics/analytics from a drained finite replay.
+
+    Input Parquet and its checkpoint remain append-only. Derived snapshots are
+    complete-mode Structured Streaming aggregations, replaced per micro-batch.
+    Full aggregation state is retained, so this mode is limited to finite demos.
+    Snapshot replacement is not atomic across the two metric sinks/analytics.
+    Restarting the same completed run does not append duplicates.
+    This must only run after every ingestion query has terminated successfully.
+    """
+    from pyspark.sql.functions import lit
+
+    events = spark.read.schema(PARSED_TRAFFIC_EVENT_SCHEMA).parquet(paths["valid_events"])
+    event_count = events.count()
+    if not event_count:
+        raise ValueError("Finite replay produced no valid events; refusing to publish empty snapshots")
+    event_stream = spark.readStream.schema(PARSED_TRAFFIC_EVENT_SCHEMA).parquet(paths["valid_events"])
+    metric_counts: Dict[str, int] = {}
+    window_queries: Dict[str, Any] = {}
+    for minutes, slide, checkpoint in (
+        (5, None, "window_5_checkpoint"),
+        (15, window_15_slide, "window_15_checkpoint"),
+    ):
+        metrics = compute_traffic_windows(
+            event_stream, window_duration=f"{minutes} minutes", slide_duration=slide
+        )
+        destination = paths[f"metrics_{minutes}min"]
+
+        def write_snapshot(batch: DataFrame, batch_id: int, output: str = destination) -> None:
+            batch.write.mode("overwrite").parquet(output)
+
+        query = (
+            metrics.writeStream.outputMode("complete")
+            .foreachBatch(write_snapshot)
+            .option("checkpointLocation", paths[checkpoint])
+            .trigger(availableNow=True)
+            .start()
+        )
+        query.awaitTermination()
+        metric_counts[f"metrics_{minutes}min"] = spark.read.parquet(destination).count()
+        window_queries[f"metrics_{minutes}min"] = {
+            "id": str(query.id),
+            "output_mode": "complete",
+            "input_rows_this_invocation": sum(
+                progress.get("numInputRows", 0) for progress in query.recentProgress
+            ),
+            "progress": query.recentProgress,
+        }
+
+    summary = (
+        add_traffic_state(spark.read.parquet(paths["metrics_5min"]))
+        .withColumn("window_minutes", lit(5))
+        .unionByName(
+            add_traffic_state(spark.read.parquet(paths["metrics_15min"]))
+            .withColumn("window_minutes", lit(15))
+        )
+    )
+    summary.write.mode("overwrite").parquet(paths["traffic_summary"])
+    persisted_summary = spark.read.parquet(paths["traffic_summary"])
+    return {
+        "aggregation_mode": "finite_complete_streaming_snapshots",
+        "window_queries": window_queries,
+        "valid_events": event_count,
+        # A clean replay may produce no data files in the quarantine sink.
+        "quarantine": spark.read.schema(PARSED_TRAFFIC_EVENT_SCHEMA).parquet(paths["quarantine"]).count(),
+        **metric_counts,
+        "traffic_summary": persisted_summary.count(),
+        "traffic_states": {
+            str(row.traffic_state): row["count"]
+            for row in persisted_summary.groupBy("traffic_state").count().collect()
+        },
     }

@@ -16,6 +16,18 @@ Linux/macOS dùng `bash scripts/platform.sh` với cùng action. `config` hiển
 
 Dockerfile/Compose chuẩn hóa môi trường container để nhóm dùng sau. Chỉ cần Docker engine khi build/chạy container; Kafka/Spark thật được dùng khi tích hợp P2 và demo P3. [Bằng chứng kiểm tra P1](reports/p1/validation.json).
 
+## P2/P3 — pipeline tích hợp và demo một lệnh
+
+Sau khi có Python 3.11 và Docker Compose với Linux containers, chạy tại gốc repository:
+
+```powershell
+.\scripts\demo.cmd run --run-id checkpoint-01
+```
+
+Linux/macOS: `bash scripts/demo.sh run --run-id checkpoint-01`. Lệnh dùng producer, Spark và analytics của nhóm để replay **100 trạm × 7 ngày**, kiểm chứng từng event/metric/nhãn từ Parquet rồi chạy lại cùng checkpoint. Host chạy orchestration chỉ dùng thư viện chuẩn; Java/Spark và thư viện producer nằm trong worker image.
+
+Output và log mới được tạo dưới `data/runs/checkpoint-01/`; mỗi demo mới dùng ID mới. [Runbook đầy đủ](docs/checkpoint-runbook.md) mô tả thiết lập, số liệu kỳ vọng, kiểm chứng, dừng và phục hồi. CI Linux trong `.github/workflows/checkpoint.yml` chạy cùng lệnh trên clone sạch và lưu bằng chứng. Không cần tạo lại thư mục `data/sample` cho đường chạy này.
+
 ---
 
 Dữ liệu giao thông 1 tuần thu thập từ hệ thống **Caltrans PeMS** (District 7 - Los Angeles & Ventura, California) phục vụ cho môn học Big Data.

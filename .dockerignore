@@ -1,0 +1,8 @@
+.git
+.venv
+.tools
+__pycache__
+data
+reports
+BigData_Checklist.xlsx
+.env

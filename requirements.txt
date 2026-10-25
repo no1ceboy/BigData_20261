@@ -1,0 +1,4 @@
+pyarrow==19.0.1
+kafka-python==2.2.15
+tzdata==2025.2
+pytz==2025.2

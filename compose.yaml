@@ -1,0 +1,50 @@
+name: freewaypulse
+services:
+  kafka:
+    image: apache/kafka:3.9.1
+    ports:
+      - "127.0.0.1:29092:29092"
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "kafka:9092", "--list"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+  worker:
+    build: .
+    profiles: ["tools"]
+    init: true
+    working_dir: /workspace
+    environment:
+      PYTHONPATH: /workspace/src
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SEVERE_SPEED_MPH: ${SEVERE_SPEED_MPH:-20}
+      CONGESTED_SPEED_MPH: ${CONGESTED_SPEED_MPH:-40}
+      MODERATE_SPEED_MPH: ${MODERATE_SPEED_MPH:-55}
+    volumes:
+      - .:/workspace
+      - spark-ivy:/root/.ivy2
+    depends_on:
+      kafka:
+        condition: service_healthy
+volumes:
+  kafka-data:
+  spark-ivy:

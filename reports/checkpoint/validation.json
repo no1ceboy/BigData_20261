@@ -1,0 +1,63 @@
+{
+  "prepared_on": "2026-10-26",
+  "owner": "Nguyen Tat Thanh",
+  "checkpoint_date": "2026-10-26",
+  "source_commit": "3a3beabcdbc9742d0ba3057708e10045554bc6db",
+  "ci": {
+    "run_id": 40213958909,
+    "url": "https://github.com/no1ceboy/BigData_20261/actions/runs/40213958909",
+    "conclusion": "success",
+    "environment": "fresh Ubuntu GitHub runner, Docker Linux containers",
+    "artifact": "checkpoint-evidence"
+  },
+  "tasks": {
+    "P1": "Done",
+    "P2": "Done",
+    "P3": "Done",
+    "A3": "Not Started; project lead acceptance remains"
+  },
+  "upstream_dependencies": {
+    "K2": "Done",
+    "S4": "Done",
+    "A1": "Done",
+    "P1": "Done",
+    "remaining_teammate_blockers": []
+  },
+  "full_demo": {
+    "command": "python -m freewaypulse.demo run --run-id checkpoint-ci --station-limit 100 --event-limit 0",
+    "stations": 100,
+    "days": 7,
+    "events": 201600,
+    "producer_failed": 0,
+    "quarantine": 0,
+    "metrics_5min": 201600,
+    "metrics_15min": 67200,
+    "summary_rows": 268800,
+    "independent_reference_verification": "passed",
+    "same_checkpoint_restart": "passed",
+    "new_events_after_restart": 0,
+    "watermark_dropped_events": 0
+  },
+  "tests": {
+    "passed": 66,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 21.33
+  },
+  "streaming_e2e_verified": true,
+  "source_sha256": "f28ccdfd229d528c4ba1c7193a32893511ba90b90d533d6bf83d352d2349d742",
+  "evidence": [
+    "producer.json",
+    "runtime.json",
+    "verification.json",
+    "restart.json",
+    "streaming-summary.json",
+    "test-results.txt"
+  ],
+  "limitations": [
+    "Local Windows machine still needs Docker Linux containers to rerun the full demo; validation was performed on Linux CI.",
+    "Finite complete-mode aggregation retains the entire replay state.",
+    "Metric and summary snapshot replacement is not one atomic transaction; restart test covers a completed run, not every possible crash.",
+    "A3 project-lead sign-off and final-project Kubernetes/HDFS/serving scope are not marked complete."
+  ]
+}

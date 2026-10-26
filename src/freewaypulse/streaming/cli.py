@@ -6,6 +6,7 @@ Supports both continuous long-running streaming and single batch drain (--trigge
 import argparse
 import json
 import logging
+from pathlib import Path
 import sys
 import time
 from typing import List, Optional
@@ -13,7 +14,9 @@ from typing import List, Optional
 from freewaypulse.config import Settings
 from freewaypulse.streaming.engine import (
     build_streaming_pipeline,
+    build_finite_demo_pipeline,
     create_spark_session,
+    finalize_finite_demo,
 )
 
 logging.basicConfig(
@@ -21,6 +24,22 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("freewaypulse.streaming")
+
+
+def bind_run_configuration(paths: dict, configuration: dict) -> None:
+    """Refuse to reuse checkpoints with a different source or query contract."""
+    report_dir = Path(paths["reports"])
+    report_dir.mkdir(parents=True, exist_ok=True)
+    manifest = report_dir / "streaming-config.json"
+    if manifest.exists():
+        previous = json.loads(manifest.read_text(encoding="utf-8"))
+        if previous != configuration:
+            raise ValueError(
+                "Run configuration differs from its checkpoint contract; "
+                "resume with the original topic/broker/watermark/window mode or use a new --run-id"
+            )
+    else:
+        manifest.write_text(json.dumps(configuration, indent=2), encoding="utf-8")
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -64,8 +83,21 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=None,
         help="Override Kafka topic name (defaults to Settings.topic)",
     )
+    parser.add_argument(
+        "--finite-demo", action="store_true",
+        help="Drain replay into checkpointed events, then complete-mode streaming window snapshots",
+    )
+    parser.add_argument(
+        "--max-offsets-per-trigger", type=int, default=5000,
+        help="Kafka input limit per micro-batch in finite demo mode (default: 5000)",
+    )
 
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if args.finite_demo and args.trigger != "available_now":
+        parser.error("--finite-demo requires --trigger available_now")
+    if args.max_offsets_per_trigger <= 0:
+        parser.error("--max-offsets-per-trigger must be positive")
+    return args
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -87,17 +119,32 @@ def main(argv: Optional[List[str]] = None) -> int:
     logger.info("Watermark: %s", settings.watermark)
     logger.info("Trigger mode: %s", args.trigger)
 
-    spark = create_spark_session()
-
+    spark = None
     try:
-        pipeline = build_streaming_pipeline(
-            spark=spark,
-            settings=settings,
-            run_id=args.run_id,
-            trigger_mode=args.trigger,
-            trigger_interval=args.interval,
-            window_15_slide=slide_duration,
-        )
+        configuration = {
+            "source": "kafka",
+            "topic": settings.topic,
+            "bootstrap_servers": settings.bootstrap_servers,
+            "watermark": settings.watermark,
+            "window_15_slide": slide_duration,
+            "finite_demo": args.finite_demo,
+        }
+        bind_run_configuration(settings.for_run(args.run_id).as_dict(), configuration)
+        spark = create_spark_session()
+        if args.finite_demo:
+            pipeline = build_finite_demo_pipeline(
+                spark=spark, settings=settings, run_id=args.run_id,
+                max_offsets_per_trigger=args.max_offsets_per_trigger,
+            )
+        else:
+            pipeline = build_streaming_pipeline(
+                spark=spark,
+                settings=settings,
+                run_id=args.run_id,
+                trigger_mode=args.trigger,
+                trigger_interval=args.interval,
+                window_15_slide=slide_duration,
+            )
 
         paths = pipeline["paths"]
         logger.info("5-min metrics destination: %s", paths["metrics_5min"])
@@ -125,27 +172,62 @@ def main(argv: Optional[List[str]] = None) -> int:
                 for name, q in pipeline.items():
                     if name.startswith("query_") and q.isActive:
                         q.stop()
-                break
+                return 124
 
             time.sleep(2)
 
         summary = {
-            "status": "success",
+            "status": "passed",
             "run_id": args.run_id,
+            **configuration,
             "metrics_5min": paths["metrics_5min"],
             "metrics_15min": paths["metrics_15min"],
+            "paths": paths,
+            "queries": {
+                name: {
+                    "id": str(query.id),
+                    "input_rows_this_invocation": sum(
+                        progress.get("numInputRows", 0) for progress in query.recentProgress
+                    ),
+                    "progress": query.recentProgress,
+                }
+                for name, query in pipeline.items() if name.startswith("query_")
+            },
         }
-        print(json.dumps(summary, indent=2))
+        report_dir = Path(paths["reports"])
+        ingestion_report = report_dir / "ingestion.json"
+        if ingestion_report.exists():
+            summary["first_ingestion"] = json.loads(ingestion_report.read_text(encoding="utf-8"))
+        else:
+            summary["first_ingestion"] = summary["queries"]
+            ingestion_report.write_text(json.dumps(summary["queries"], indent=2), encoding="utf-8")
+        if args.finite_demo:
+            summary["counts"] = finalize_finite_demo(spark, paths, slide_duration)
+            initial_windows = report_dir / "window-queries-initial.json"
+            if initial_windows.exists():
+                summary["first_window_queries"] = json.loads(initial_windows.read_text(encoding="utf-8"))
+            else:
+                summary["first_window_queries"] = summary["counts"]["window_queries"]
+                initial_windows.write_text(
+                    json.dumps(summary["first_window_queries"], indent=2), encoding="utf-8"
+                )
+        serialized = json.dumps(summary, indent=2)
+        (report_dir / "streaming.json").write_text(serialized, encoding="utf-8")
+        initial_report = report_dir / "streaming-initial.json"
+        if not initial_report.exists():
+            initial_report.write_text(serialized, encoding="utf-8")
+        print(serialized)
         return 0
 
     except KeyboardInterrupt:
         logger.info("Interrupted by user. Shutting down streaming queries...")
-        return 0
+        return 130
     except Exception as e:
         logger.exception("Streaming pipeline encountered an error: %s", e)
         return 1
     finally:
-        spark.stop()
+        if spark is not None:
+            spark.stop()
 
 
 if __name__ == "__main__":

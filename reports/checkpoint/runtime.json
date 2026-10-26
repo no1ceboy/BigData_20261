@@ -1,0 +1,17 @@
+{
+  "run_id": "checkpoint-ci",
+  "topic": "traffic-events-checkpoint-ci",
+  "bootstrap_servers": "kafka:9092",
+  "source": "/workspace/data/d07-1week-mainline/processed/observations.csv.gz",
+  "station_limit": 100,
+  "event_limit": 0,
+  "watermark": "10 minutes",
+  "speed_thresholds_mph": {
+    "severe_speed_mph": 20.0,
+    "congested_speed_mph": 40.0,
+    "moderate_speed_mph": 55.0
+  },
+  "mode": "finite_checkpoint_replay",
+  "window_15_slide": null,
+  "started_at": "2026-10-25T16:56:02.882066+00:00"
+}

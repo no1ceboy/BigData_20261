@@ -1,0 +1,37 @@
+name: Checkpoint integration
+on:
+  push:
+    branches: [main, thanh_p2_p3]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  kafka-spark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PYTHONPATH: src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Real 100-station seven-day Kafka Spark demo and restart
+        run: python -m freewaypulse.demo run --run-id checkpoint-ci --station-limit 100 --event-limit 0
+      - name: Existing and integration tests in Linux worker
+        run: |
+          docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic traffic-events --partitions 3 --replication-factor 1
+          docker compose run --rm -T worker sh -c 'python -m pip install pytest==8.4.2 && python -m pytest -q tests'
+      - name: Collect broker logs
+        if: always()
+        run: docker compose logs --no-color > broker.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checkpoint-evidence
+          path: |
+            data/runs/checkpoint-ci/reports/
+            broker.log
+      - if: always()
+        run: docker compose down

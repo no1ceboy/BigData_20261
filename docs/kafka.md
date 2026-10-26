@@ -27,6 +27,8 @@ Hệ thống hàng đợi sử dụng **Apache Kafka 3.9.1** vận hành ở ch�
 * **Phân bổ khóa (Partition Key):** `station_id` (Kiểu chuỗi UTF-8).
   * **Bảo toàn thứ tự (Ordering Guarantee):** Mọi sự kiện phát sinh từ cùng một trạm cảm biến (`station_id`) được định tuyến vào cùng một phân vùng duy nhất, bảo toàn tuần tự thời gian tuyệt đối theo từng trạm.
 
+**Topic riêng của checkpoint P2/P3:** `freewaypulse.demo` tạo `<KAFKA_TOPIC>-<run-id>` với **1 partition**, replication factor 1. Producer hoàn tất replay theo thứ tự thời gian trước khi Spark `available_now` đọc các micro-batch giới hạn offset. Một partition giúp giữ thứ tự event toàn cục cho watermark trong replay hữu hạn; không thay đổi cấu hình 3 partition của topic dùng chung ở trên. Xem [runbook checkpoint](checkpoint-runbook.md) để chạy toàn chuỗi và hiểu chế độ finite replay.
+
 ---
 
 ## 2. Quản trị Broker & Chuẩn hóa Topic (Administration)
@@ -138,6 +140,11 @@ Module `replay.py` đảm nhận việc phát lại dữ liệu quan trắc chu�
 - **Pacing Control:** Tốc độ gửi được điều tiết bám sát tham số `--rate` (events/giây) bằng thuật toán bù sai lệch trôi thời gian (sleep drift compensation). Tham số `--rate 0` tương ứng chế độ gửi tối đa năng lực I/O.
 - **Idempotent Delivery:** Kích hoạt `enable.idempotence=True` và `acks=all` để loại trừ nguy cơ ghi lặp bản tin tại broker khi xảy ra sự cố mạng.
 - **Buffer Backpressure:** Kiểm soát chống tràn hàng đợi bộ đệm local qua cơ chế bắt ngoại lệ `BufferError` và kích hoạt `poll()`.
+- **Cấu hình P1:** `Settings.read()` đọc biến môi trường, `.env` và mặc định chung; producer dùng đúng `bootstrap_servers`, `topic`, đường dẫn nguồn, tốc độ replay, station/event limit. Đường dẫn input tương đối được tính từ gốc repository; input không tồn tại gây lỗi thay vì tự chuyển sang sample khác.
+- **Workload checkpoint:** Mặc định chọn 100 station ID nhỏ nhất từ `stations.csv` cạnh nguồn; với CSV độc lập không có metadata, chọn 100 ID nhỏ nhất trong chính file. CSV được đọc theo chunk để lọc station trước khi giữ/sắp xếp event. `--limit` được áp dụng sau khi chọn station và sắp xếp; `--station-limit 0` chọn mọi trạm.
+- **Delivery report:** `--report <path>` lưu JSON kèm station IDs, số event đã chọn, khoảng thời gian nguồn, số gửi thành công/thất bại và throughput. Thông điệp còn nằm trong hàng đợi sau `flush` được tính lỗi; exit code khác 0 nếu chưa xác nhận đủ số event.
+
+Producer giữ nguyên chuỗi `event_time` có offset và `event_id` sẵn có; nếu chưa có ID thì sinh `{station_id}_{YYYYMMDDTHHMMSS}` theo đồng hồ địa phương. Việc sắp xếp so sánh thời điểm UTC tạm thời, không thay đổi thời gian lịch sử trong bản tin. Giá trị `flow` có phần thập phân bằng 0 được xuất thành JSON integer để khớp schema Spark; NaN, Inf và giá trị thiếu được xuất thành `null`.
 
 ### 4.2 Hướng dẫn Vận hành CLI
 
@@ -151,17 +158,24 @@ $env:KAFKA_BOOTSTRAP_SERVERS = "127.0.0.1:29092"
 Chạy phát dữ liệu mẫu:
 
 ```powershell
-# Chế độ thử nghiệm: Gửi 1.000 sự kiện với tốc độ giới hạn 500 events/giây
-python -m freewaypulse.producer.replay --rate 500 --limit 1000
+# Chế độ thử nghiệm: 1.000 event của 100 trạm đã chọn
+python -m freewaypulse.producer.replay --station-limit 100 --rate 500 --limit 1000 --report reports/replay-smoke.json
 
-# Chế độ tải tối đa: Gửi toàn bộ tập dữ liệu ở tốc độ không giới hạn
-python -m freewaypulse.producer.replay --rate 0
+# Đủ 100 trạm x 7 ngày: 201.600 event, tốc độ không giới hạn
+python -m freewaypulse.producer.replay --station-limit 100 --limit 0 --rate 0 --report reports/replay-full.json
+
+# Tùy chọn: mọi trạm trong dữ liệu nguồn, không dùng cho workload checkpoint chuẩn
+python -m freewaypulse.producer.replay --station-limit 0 --limit 0 --rate 0
 ```
 
-Kết quả thực thi xuất ra một bản tin JSON duy nhất trên dòng cuối của stdout:
+Host chạy riêng producer cần cài `requirements.txt` trước. Full demo dùng thư viện trong container worker nên không cần cài chúng trên host. Topic phải được tạo trước khi producer chạy.
+
+Kết quả thực thi xuất ra một bản tin JSON trên stdout và ghi vào đường dẫn `--report` nếu được chỉ định. Ví dụ rút gọn các trường chính:
 ```json
-{"sent": 1000, "failed": 0, "seconds": 1.995, "events_per_sec": 501.25, "topic": "traffic-events"}
+{"status": "passed", "selected_events": 1000, "station_count": 100, "sent": 1000, "failed": 0, "seconds": 1.995, "events_per_sec": 501.25, "topic": "traffic-events"}
 ```
+
+Report đầy đủ còn có `input`, `station_ids`, `station_limit`, `event_limit`, `event_time_min` và `event_time_max`. `main(argv=None)` trả 0 khi mọi event đã được xác nhận gửi, trả 1 khi delivery thiếu/lỗi. Không xem ví dụ report là bằng chứng một run đã được thực hiện.
 
 ---
 
@@ -180,6 +194,8 @@ Toàn bộ logic chuyển đổi hợp đồng dữ liệu và tính tương th�
    - Xác nhận callback báo cáo `sent == 1000` và `failed == 0`.
    - Truy vấn trực tiếp High Watermark Offsets từ toàn bộ các phân vùng trên broker trước và sau khi gửi; đảm bảo mức chênh lệch tuyệt đối $\Delta \text{Offset} \equiv 1000$.
 
+Các regression test bổ sung kiểm tra cấu hình P1, lựa chọn station và event cap, giữ offset/ID khi sắp xếp, flow integer/null, input thiếu và delivery chưa xác nhận phải thất bại. Test `test_smoke_e2e` dùng broker thật và được skip khi không kết nối được; cần phân biệt test offline pass với nghiệm thu Kafka thật.
+
 ### 5.2 Lệnh Thực thi Kiểm thử
 
 Chạy kiểm thử có ghi nhận kết quả phục vụ CI/CD hoặc lưu vết nghiệm thu (tránh lỗi xung đột luồng console trên PowerShell):
@@ -193,12 +209,13 @@ $env:KAFKA_BOOTSTRAP_SERVERS = "127.0.0.1:29092"
 pytest -s tests/test_replay.py --junitxml=reports/junit_replay.xml
 ```
 
-Trạng thái đạt chuẩn khi terminal trả về:
-```text
-tests/test_replay.py ..
-[K3 Smoke Test Passed] Throughput: ... events/sec over ...s
-2 passed in ...s
+Chỉ chạy regression offline khi không có broker:
+
+```powershell
+python -m pytest -q tests/test_replay.py -k "not smoke_e2e"
 ```
+
+Trong full suite, kiểm tra JUnit/summary để xác nhận test Kafka đã chạy hay bị skip. Để nghiệm thu cả Kafka–Spark, dùng workflow checkpoint hoặc lệnh demo trong [runbook](checkpoint-runbook.md); smoke test producer riêng không thay cho P2/P3.
 
 ---
 
